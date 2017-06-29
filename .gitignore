@@ -30,6 +30,7 @@ local.properties
 # External tool builders
 .externalToolBuilders/
 .idea
+*.iml
 
 # Locally stored "Eclipse launch configurations"
 *.launch
