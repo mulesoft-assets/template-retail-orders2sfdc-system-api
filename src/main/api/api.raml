@@ -1,5 +1,5 @@
 #%RAML 1.0
-baseUri: https://mocksvc.mulesoft.com/mocks/454ce9a3-9fca-4c66-843b-0c6fa44bb03f
+baseUri: http://localhost:8081/api
 title: dev-retail-order-system-api
 version: v1
 
@@ -30,7 +30,6 @@ types:
   /customer/{customerId}:
     displayName: Order
     get:
-  #     is: [ collection ]
       description: Lists the user orders
       queryParameters:
         trackingNumber:
