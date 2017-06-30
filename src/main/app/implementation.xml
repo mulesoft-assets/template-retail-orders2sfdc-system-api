@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:sfdc="http://www.mulesoft.org/schema/mule/sfdc" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:core="http://www.mulesoft.org/schema/mule/core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/sfdc http://www.mulesoft.org/schema/mule/sfdc/current/mule-sfdc.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+
+    <flow name="createOrder">
+        <set-property propertyName="Content-Type" value="application/json" doc:name="Set Content Type"/>
+        <dw:transform-message doc:name="Set variable - order">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload.orderItems]]></dw:set-payload>
+            <dw:set-variable variableName="order"><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-variable>
+        </dw:transform-message>
+        <object-to-string-transformer returnClass="java.lang.String" doc:name="OrderItems to String"/>
+        <set-variable variableName="orderItemsString" value="#[payload]" doc:name="Set variable - orderItemsString"/>
+                <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="dsql:SELECT CustomerId__c, MailingStreet, MailingCity, MailingPostalCode, MailingState, MailingCountry, Phone, Email, OtherStreet, OtherCity, OtherPostalCode, OtherState, OtherCountry FROM Contact WHERE CustomerId__c = '#[flowVars.customerId]'" doc:name="Get Contact"/>
+        <choice doc:name="Does Contact Exist?">
+            <when expression="#[payload != empty]">
+                <dw:transform-message doc:name="Set variable - customer">
+                    <dw:set-variable variableName="customer"><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	customerId: payload.CustomerId__c,
+	firstName: payload.FirstName,
+	lastName: payload.LastName,
+	postalAddress: {
+		street: payload.MailingStreet,
+		city: payload.MailingCity,
+		postalCode: payload.MailingPostalCode, 
+		state: payload.MailingState,
+		country: payload.MailingCountry
+	},
+	phoneNumber: payload.Phone,
+	emailAddress: payload.Email,
+	deliveryAddress:{
+		street: payload.OtherStreet,
+		city: payload.OtherCity,
+		postalCode: payload.OtherPostalCode,
+		state: payload.OtherState,
+		country: payload.OtherCountry  
+	}
+}]]></dw:set-variable>
+                </dw:transform-message>
+                <dw:transform-message doc:name="Map Data to Salesforce Order" metadata:id="ea42dff6-d450-4136-b292-8abf3238f2f9">
+                    <dw:input-payload mimeType="application/json"/>
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	ContractId: "8000J00000E2lbYQAR",
+	AccountId: "0010J00001n5lkaQAA",
+	BillingStreet: flowVars.customer.postalAddress.street,
+	BillingCity: flowVars.customer.postalAddress.city,
+	BillingState: flowVars.customer.postalAddress.state,
+	BillingPostalCode: flowVars.customer.postalAddress.postalCode,
+	BillingCountry: flowVars.customer.postalAddress.country,
+	ShippingStreet: flowVars.customer.deliveryAddress.street,
+	ShippingCity: flowVars.customer.deliveryAddress.city,
+	ShippingState: flowVars.customer.deliveryAddress.state,
+	ShippingPostalCode: flowVars.customer.deliveryAddress.postalCode,
+	ShippingCountry: flowVars.customer.deliveryAddress.country,
+	TotalAmount__c: flowVars.order.price,
+	EffectiveDate: now,
+	Status: "Draft",
+	Description: flowVars.orderItemsString,
+	CustomerId__c: flowVars.customer.customerId
+}]]></dw:set-payload>
+                </dw:transform-message>
+                <sfdc:create-single config-ref="Salesforce__Basic_Authentication" type="Order" doc:name="Create Order">
+                    <sfdc:object ref="#[payload]"/>
+                </sfdc:create-single>
+                <choice doc:name="Was Order created ?">
+                    <when expression="#[payload.success]">
+                        <dw:transform-message doc:name="Create Response">
+                            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order was created",
+	id: payload.Id
+}]]></dw:set-payload>
+                        </dw:transform-message>
+                    </when>
+                    <otherwise>
+                        <set-property propertyName="http.status" value="#[400]" doc:name="Bad Request"/>
+                        <dw:transform-message doc:name="Create Order was not created Response">
+                            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order was not created"
+}]]></dw:set-payload>
+                        </dw:transform-message>
+                    </otherwise>
+                </choice>
+            </when>
+            <otherwise>
+                <set-property propertyName="http.status" value="#[404]" doc:name="Resource Not Found"/>
+                <set-property propertyName="Content-Type" value="application/json" doc:name="Set Content Type"/>
+                <dw:transform-message doc:name="Create Customer not found Response">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Customer not found"
+}]]></dw:set-payload>
+                </dw:transform-message>
+
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="getOrders">
+        <sfdc:query-all config-ref="Salesforce__Basic_Authentication" query="SELECT Id, TotalAmount__c, Description, Status, CustomerId__c FROM Order WHERE CustomerId__c = '#[flowVars.customerId]' AND IsDeleted = false  " doc:name="Get Orders"/>
+        <dw:transform-message doc:name="Map Salesforce Orders to Response">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map {
+	id: $.Id,
+	price: $.TotalAmount__c,
+	orderItems: read($.Description, "application/json"),
+	status: $.Status,
+	trackingNumber: $.Id,
+	customerId: flowVars.customerId
+}]]></dw:set-payload>
+        </dw:transform-message>
+    </flow>
+    <flow name="getOrder">
+        <sfdc:query-single config-ref="Salesforce__Basic_Authentication"  doc:name="Get Order" query="SELECT Id, TotalAmount__c, Description, Status, CustomerId__c FROM Order WHERE Id = '#[flowVars.id]'">
+        </sfdc:query-single>
+        <choice doc:name="Does Order exist?">
+            <when expression="payload != null">
+                <dw:transform-message doc:name="Map Salesforce Order to Response">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	"id": flowVars.id,
+    "price": payload.TotalAmount__c,
+    "orderItems": read(payload.Description, "application/json"),
+    "status": payload.Status,
+    "trackingNumber": flowVars.id,
+    "customerId": payload.CustomerId__c
+}]]></dw:set-payload>
+                </dw:transform-message>
+            </when>
+            <otherwise>
+                <set-property propertyName="http.status" value="#[404]" doc:name="Resource Not Found"/>
+                <dw:transform-message doc:name="Create Order not found Response">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order not found"
+}]]></dw:set-payload>
+                </dw:transform-message>
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="updateOrder">
+        <set-property propertyName="Content-Type" value="application/json" doc:name="Set Content Type"/>
+        <dw:transform-message doc:name="Set variable - order">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload.orderItems]]></dw:set-payload>
+            <dw:set-variable variableName="order"><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-variable>
+        </dw:transform-message>
+        <object-to-string-transformer returnClass="java.lang.String" doc:name="OrderItems to String"/>
+        <set-variable variableName="orderItemsString" value="#[payload]" doc:name="Set variable - orderItemsString"/>
+        <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="SELECT Id FROM Order WHERE Id = '#[flowVars.id]'" doc:name="Get Order"/>
+        <choice doc:name="Does Order exist?">
+            <when expression="payload != null">
+                <dw:transform-message doc:name="Map new data to Salesforce Order" metadata:id="ea42dff6-d450-4136-b292-8abf3238f2f9">
+                    <dw:input-payload mimeType="application/json"/>
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	Id: flowVars.id,
+	TotalAmount__c: flowVars.order.price,
+	Status: flowVars.order.status,
+	Description: flowVars.orderItemsString
+}]]></dw:set-payload>
+                </dw:transform-message>
+                <sfdc:update-single config-ref="Salesforce__Basic_Authentication" type="Order" doc:name="Update Order">
+                    <sfdc:object ref="#[payload]"/>
+                </sfdc:update-single>
+                <choice doc:name="Was Order updated?">
+                    <when expression="#[payload.success]">
+                        <dw:transform-message doc:name="Create Response">
+                            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order was updated"
+}]]></dw:set-payload>
+                        </dw:transform-message>
+                    </when>
+                    <otherwise>
+                        <set-property propertyName="http.status" value="#[400]" doc:name="Bad Request"/>
+                        <dw:transform-message doc:name="Create Order was not updated Response">
+                            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order was not updated"
+}]]></dw:set-payload>
+                        </dw:transform-message>
+                    </otherwise>
+                </choice>
+            </when>
+            <otherwise>
+                <set-property propertyName="http.status" value="#[404]" doc:name="Resource Not Found"/>
+                <dw:transform-message doc:name="Create Order not found Response">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order was not updated"
+}]]></dw:set-payload>
+                </dw:transform-message>
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="deleteOrder">
+        <sfdc:delete config-ref="Salesforce__Basic_Authentication" doc:name="Delete Order">
+            <sfdc:ids ref="#[[flowVars.id]]"/>
+        </sfdc:delete>
+        <choice doc:name="Was Order deleted ?">
+            <when expression="#[payload[0].success]">
+                <dw:transform-message doc:name="Create Order was deleted Response">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order was deleted"
+}]]></dw:set-payload>
+                </dw:transform-message>
+            </when>
+            <otherwise>
+                <set-property propertyName="http.status" value="#[400]" doc:name="Bad Request"/>
+                <dw:transform-message doc:name="Create Order was not deleted Response">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order was not deleted"
+}]]></dw:set-payload>
+                </dw:transform-message>
+            </otherwise>
+        </choice>
+    </flow>
+    <flow name="updateOrderStatus">
+        <set-property propertyName="Content-Type" value="application/json" doc:name="Set Content Type"/>
+        <dw:transform-message doc:name="Set variable - orderStatus">
+            <dw:set-variable variableName="orderStatus"><![CDATA[%dw 1.0
+%output application/java
+---
+payload.status
+]]></dw:set-variable>
+        </dw:transform-message>
+        <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="SELECT Id FROM Order WHERE Id = '#[flowVars.id]'" doc:name="Get Order"/>
+        <choice doc:name="Does Order exist?">
+            <when expression="payload != null">
+                <dw:transform-message doc:name="Map new status to Salesforce Order" metadata:id="ea42dff6-d450-4136-b292-8abf3238f2f9">
+                    <dw:input-payload mimeType="application/json"/>
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+	Id: flowVars.id,
+	Status: flowVars.orderStatus
+}]]></dw:set-payload>
+                </dw:transform-message>
+                <sfdc:update-single config-ref="Salesforce__Basic_Authentication" type="Order" doc:name="Update Order status">
+                    <sfdc:object ref="#[payload]"/>
+                </sfdc:update-single>
+                <choice doc:name="Was Order status updated?">
+                    <when expression="#[payload.success]">
+                        <set-property propertyName="http.status" value="#[200]" doc:name="Set http status"/>
+                        <dw:transform-message doc:name="Create Response">
+                            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order status was updated"
+}]]></dw:set-payload>
+                        </dw:transform-message>
+                    </when>
+                    <otherwise>
+                        <set-property propertyName="http.status" value="#[400]" doc:name="Bad Request"/>
+                        <dw:transform-message doc:name="Create Order status was not updated Response">
+                            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order was not updated"
+}]]></dw:set-payload>
+                        </dw:transform-message>
+                    </otherwise>
+                </choice>
+            </when>
+            <otherwise>
+                <set-property propertyName="http.status" value="#[404]" doc:name="Resource Not Found"/>
+                <dw:transform-message doc:name="Create Order not found Response">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	message: "Order status was not updated"
+}]]></dw:set-payload>
+                </dw:transform-message>
+            </otherwise>
+        </choice>
+    </flow>
+
+</mule>
+
