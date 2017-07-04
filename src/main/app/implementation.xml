@@ -19,7 +19,7 @@ payload.orderItems]]></dw:set-payload>
 payload]]></dw:set-variable>
         </dw:transform-message>
         <object-to-string-transformer returnClass="java.lang.String" doc:name="OrderItems to String"/>
-        <set-variable variableName="orderItemsString" value="#[payload]" doc:name="Set variable - orderItemsString"/>
+        <set-variable variableName="orderItemsString" value="#[payload.replaceAll(&quot;\\{|\\[|\\]|\\ {4}&quot;,&quot;&quot;).trim().replaceAll(&quot;\\},&quot;,&quot;__________&quot;).replaceAll(&quot;\\}&quot;,&quot;&quot;)]" doc:name="Set variable - orderItemsString"/>
                 <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="dsql:SELECT CustomerId__c, MailingStreet, MailingCity, MailingPostalCode, MailingState, MailingCountry, Phone, Email, OtherStreet, OtherCity, OtherPostalCode, OtherState, OtherCountry FROM Contact WHERE CustomerId__c = '#[flowVars.customerId]'" doc:name="Get Contact"/>
         <choice doc:name="Does Contact Exist?">
             <when expression="#[payload != empty]">
@@ -126,7 +126,7 @@ payload]]></dw:set-variable>
 payload map {
 	id: $.Id,
 	price: $.TotalAmount__c,
-	orderItems: read($.Description, "application/json"),
+	orderItems: read(("[{" ++ ($.Description replace "__________" with "},{") ++ "}]"), "application/json"),
 	status: $.Status,
 	trackingNumber: $.Id,
 	customerId: flowVars.customerId
@@ -145,7 +145,7 @@ payload map {
 {
 	"id": flowVars.id,
     "price": payload.TotalAmount__c,
-    "orderItems": read(payload.Description, "application/json"),
+    "orderItems": read(("[{" ++ (payload.Description replace "__________" with "},{") ++ "}]"), "application/json"),
     "status": payload.Status,
     "trackingNumber": flowVars.id,
     "customerId": payload.CustomerId__c
@@ -178,7 +178,7 @@ payload.orderItems]]></dw:set-payload>
 payload]]></dw:set-variable>
         </dw:transform-message>
         <object-to-string-transformer returnClass="java.lang.String" doc:name="OrderItems to String"/>
-        <set-variable variableName="orderItemsString" value="#[payload]" doc:name="Set variable - orderItemsString"/>
+        <set-variable variableName="orderItemsString" value="#[payload.replaceAll(&quot;\\{|\\[|\\]|\\ {4}&quot;,&quot;&quot;).trim().replaceAll(&quot;\\},&quot;,&quot;__________&quot;).replaceAll(&quot;\\}&quot;,&quot;&quot;)]" doc:name="Set variable - orderItemsString"/>
         <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="SELECT Id FROM Order WHERE Id = '#[flowVars.id]'" doc:name="Get Order"/>
         <choice doc:name="Does Order exist?">
             <when expression="payload != null">
