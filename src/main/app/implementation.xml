@@ -55,8 +55,8 @@ payload]]></dw:set-variable>
 %output application/java
 ---
 {
-	ContractId: "8000J00000E2lbYQAR",
-	AccountId: "0010J00001n5lkaQAA",
+	ContractId: p("sfdc.contract.id"),
+	AccountId: p("sfdc.account.id"),
 	BillingStreet: flowVars.customer.postalAddress.street,
 	BillingCity: flowVars.customer.postalAddress.city,
 	BillingState: flowVars.customer.postalAddress.state,
