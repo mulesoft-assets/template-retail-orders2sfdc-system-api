@@ -6,20 +6,16 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
 
-    <flow name="createOrder">
+     <flow name="createOrder">
         <set-property propertyName="Content-Type" value="application/json" doc:name="Set Content Type"/>
-        <dw:transform-message doc:name="Set variable - order">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/json
----
-payload.orderItems]]></dw:set-payload>
+                <dw:transform-message doc:name="Set variable - order">
+
             <dw:set-variable variableName="order"><![CDATA[%dw 1.0
 %output application/java
 ---
 payload]]></dw:set-variable>
         </dw:transform-message>
-        <object-to-string-transformer returnClass="java.lang.String" doc:name="OrderItems to String"/>
-        <set-variable variableName="orderItemsString" value="#[payload.replaceAll(&quot;\\{|\\[|\\]|\\ {4}&quot;,&quot;&quot;).trim().replaceAll(&quot;\\},&quot;,&quot;__________&quot;).replaceAll(&quot;\\}&quot;,&quot;&quot;)]" doc:name="Set variable - orderItemsString"/>
+
                 <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="dsql:SELECT CustomerId__c, MailingStreet, MailingCity, MailingPostalCode, MailingState, MailingCountry, Phone, Email, OtherStreet, OtherCity, OtherPostalCode, OtherState, OtherCountry FROM Contact WHERE CustomerId__c = '#[flowVars.customerId]'" doc:name="Get Contact"/>
         <choice doc:name="Does Contact Exist?">
             <when expression="#[payload != empty]">
@@ -27,7 +23,7 @@ payload]]></dw:set-variable>
                     <dw:set-variable variableName="customer"><![CDATA[%dw 1.0
 %output application/json
 ---
-{
+{	
 	customerId: payload.CustomerId__c,
 	firstName: payload.FirstName,
 	lastName: payload.LastName,
@@ -53,6 +49,13 @@ payload]]></dw:set-variable>
                     <dw:input-payload mimeType="application/json"/>
                     <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
+%function toSalesforceString(arrayOfObjects) {
+	output: arrayOfObjects map ((value) -> (
+      value mapObject { 
+          '$$': ('\"' ++ $$ ++ '\"') ++ ': \"' ++ $ ++ '\"'       
+      } pluck $ joinBy ',\n'
+  )) joinBy '\n_________________________________________________\n\n'
+}
 ---
 {
 	ContractId: p("sfdc.contract.id"),
@@ -70,8 +73,11 @@ payload]]></dw:set-variable>
 	TotalAmount__c: flowVars.order.price,
 	EffectiveDate: now,
 	Status: "Draft",
-	Description: flowVars.orderItemsString,
-	CustomerId__c: flowVars.customer.customerId
+	Description: "Anypoint Store Order:",
+	PickupDetails__c: toSalesforceString(flowVars.order.orderItems.pickupItems).output,
+	ShipmentDetails__c: toSalesforceString(flowVars.order.orderItems.shipmentItems).output,
+	PartnersDetails__c: toSalesforceString(flowVars.order.orderItems.partnersItems).output,
+	CustomerId__c: flowVars.customer.customerId 
 }]]></dw:set-payload>
                 </dw:transform-message>
                 <sfdc:create-single config-ref="Salesforce__Basic_Authentication" type="Order" doc:name="Create Order">
@@ -85,7 +91,7 @@ payload]]></dw:set-variable>
 ---
 {
 	message: "Order was created",
-	id: payload.Id
+	orderId: payload.Id
 }]]></dw:set-payload>
                         </dw:transform-message>
                     </when>
@@ -118,38 +124,57 @@ payload]]></dw:set-variable>
         </choice>
     </flow>
     <flow name="getOrders">
-        <sfdc:query-all config-ref="Salesforce__Basic_Authentication" query="SELECT Id, TotalAmount__c, Description, Status, CustomerId__c FROM Order WHERE CustomerId__c = '#[flowVars.customerId]' AND IsDeleted = false ORDER BY CreatedDate DESC" doc:name="Get Orders"/>
+        <sfdc:query-all config-ref="Salesforce__Basic_Authentication" query="SELECT Id, TotalAmount__c, PickupDetails__c, ShipmentDetails__c, PartnersDetails__c, Status, CustomerId__c FROM Order WHERE CustomerId__c = '#[flowVars.customerId]' AND IsDeleted = false ORDER BY CreatedDate DESC" doc:name="Get Orders"/>
+
         <dw:transform-message doc:name="Map Salesforce Orders to Response">
+            <dw:input-payload />
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
+%function toJsonFormat(orderItems) {
+	output: read(("[{" ++ (orderItems replace "_________________________________________________" with "},{") ++ "}]"), "application/json")	
+}
 ---
-payload map {
-	id: $.Id,
-	price: $.TotalAmount__c,
-	orderItems: read(("[{" ++ ($.Description replace "__________" with "},{") ++ "}]"), "application/json"),
-	status: $.Status,
-	trackingNumber: $.Id,
-	customerId: flowVars.customerId
-}]]></dw:set-payload>
+payload map (order) -> {
+	orderId: order.Id,
+	customerId: order.CustomerId__c,
+	price: order.TotalAmount__c,
+	status: order.Status,
+	trackingNumber: order.Id, 
+	orderItems: {
+		pickupItems: toJsonFormat(order.PickupDetails__c).output,
+		shipmentItems: toJsonFormat(order.ShipmentDetails__c).output,
+		partnersItems: toJsonFormat(order.PartnersDetails__c).output
+	}
+}
+]]></dw:set-payload>
         </dw:transform-message>
     </flow>
     <flow name="getOrder">
-        <sfdc:query-single config-ref="Salesforce__Basic_Authentication"  doc:name="Get Order" query="SELECT Id, TotalAmount__c, Description, Status, CustomerId__c FROM Order WHERE Id = '#[flowVars.id]'">
+        <sfdc:query-single config-ref="Salesforce__Basic_Authentication"  doc:name="Get Order" query="SELECT Id, TotalAmount__c, PickupDetails__c, ShipmentDetails__c, PartnersDetails__c, Status, CustomerId__c FROM Order WHERE Id= '#[flowVars.orderId]'">
         </sfdc:query-single>
+
         <choice doc:name="Does Order exist?">
             <when expression="payload != null">
                 <dw:transform-message doc:name="Map Salesforce Order to Response">
                     <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
+%function toJsonFormat(orderItems) {
+	output: read(("[{" ++ (orderItems replace "_________________________________________________" with "},{") ++ "}]"), "application/json")	
+}
 ---
 {
-	"id": flowVars.id,
-    "price": payload.TotalAmount__c,
-    "orderItems": read(("[{" ++ (payload.Description replace "__________" with "},{") ++ "}]"), "application/json"),
-    "status": payload.Status,
-    "trackingNumber": flowVars.id,
-    "customerId": payload.CustomerId__c
-}]]></dw:set-payload>
+	orderId: payload.Id,
+	customerId: payload.CustomerId__c,
+	price: payload.TotalAmount__c,
+	status: payload.Status,
+	trackingNumber: payload.Id, 
+	orderItems: {
+		pickupItems: toJsonFormat(payload.PickupDetails__c).output,
+		shipmentItems: toJsonFormat(payload.ShipmentDetails__c).output,
+		partnersItems: toJsonFormat(payload.PartnersDetails__c).output
+	}
+}
+]]></dw:set-payload>
                 </dw:transform-message>
             </when>
             <otherwise>
@@ -168,31 +193,37 @@ payload map {
     <flow name="updateOrder">
         <set-property propertyName="Content-Type" value="application/json" doc:name="Set Content Type"/>
         <dw:transform-message doc:name="Set variable - order">
-            <dw:set-payload><![CDATA[%dw 1.0
-%output application/json
----
-payload.orderItems]]></dw:set-payload>
+
             <dw:set-variable variableName="order"><![CDATA[%dw 1.0
 %output application/java
 ---
 payload]]></dw:set-variable>
         </dw:transform-message>
-        <object-to-string-transformer returnClass="java.lang.String" doc:name="OrderItems to String"/>
-        <set-variable variableName="orderItemsString" value="#[payload.replaceAll(&quot;\\{|\\[|\\]|\\ {4}&quot;,&quot;&quot;).trim().replaceAll(&quot;\\},&quot;,&quot;__________&quot;).replaceAll(&quot;\\}&quot;,&quot;&quot;)]" doc:name="Set variable - orderItemsString"/>
-        <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="SELECT Id FROM Order WHERE Id = '#[flowVars.id]'" doc:name="Get Order"/>
+
+        <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="SELECT Id FROM Order WHERE  Id= '#[flowVars.orderId]'" doc:name="Get Order"/>
         <choice doc:name="Does Order exist?">
             <when expression="payload != null">
                 <dw:transform-message doc:name="Map new data to Salesforce Order" metadata:id="ea42dff6-d450-4136-b292-8abf3238f2f9">
                     <dw:input-payload mimeType="application/json"/>
                     <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
+%function toSalesforceString(arrayOfObjects) {
+	output: arrayOfObjects map ((value) -> (
+      value mapObject { 
+          '$$': ('\"' ++ $$ ++ '\"') ++ ': \"' ++ $ ++ '\"'       
+      } pluck $ joinBy ',\n'
+  )) joinBy '\n_________________________________________________\n\n'
+}
 ---
 {
-	Id: flowVars.id,
+	Id: flowVars.orderId,
 	TotalAmount__c: flowVars.order.price,
 	Status: flowVars.order.status,
-	Description: flowVars.orderItemsString
-}]]></dw:set-payload>
+	PickupDetails__c: toSalesforceString(flowVars.order.orderItems.pickupItems).output,
+	ShipmentDetails__c: toSalesforceString(flowVars.order.orderItems.shipmentItems).output,
+	PartnersDetails__c: toSalesforceString(flowVars.order.orderItems.partnersItems).output
+}
+]]></dw:set-payload>
                 </dw:transform-message>
                 <sfdc:update-single config-ref="Salesforce__Basic_Authentication" type="Order" doc:name="Update Order">
                     <sfdc:object ref="#[payload]"/>
@@ -236,7 +267,7 @@ payload]]></dw:set-variable>
     </flow>
     <flow name="deleteOrder">
         <sfdc:delete config-ref="Salesforce__Basic_Authentication" doc:name="Delete Order">
-            <sfdc:ids ref="#[[flowVars.id]]"/>
+            <sfdc:ids ref="#[[flowVars.orderId]]"/>
         </sfdc:delete>
         <choice doc:name="Was Order deleted ?">
             <when expression="#[payload[0].success]">
@@ -271,7 +302,7 @@ payload]]></dw:set-variable>
 payload.status
 ]]></dw:set-variable>
         </dw:transform-message>
-        <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="SELECT Id FROM Order WHERE Id = '#[flowVars.id]'" doc:name="Get Order"/>
+        <sfdc:query-single config-ref="Salesforce__Basic_Authentication" query="SELECT Id FROM Order WHERE Id = '#[flowVars.orderId]'" doc:name="Get Order"/>
         <choice doc:name="Does Order exist?">
             <when expression="payload != null">
                 <dw:transform-message doc:name="Map new status to Salesforce Order" metadata:id="ea42dff6-d450-4136-b292-8abf3238f2f9">
@@ -280,13 +311,14 @@ payload.status
 %output application/java
 ---
 {
-	Id: flowVars.id,
+	Id: flowVars.orderId,
 	Status: flowVars.orderStatus
 }]]></dw:set-payload>
                 </dw:transform-message>
                 <sfdc:update-single config-ref="Salesforce__Basic_Authentication" type="Order" doc:name="Update Order status">
                     <sfdc:object ref="#[payload]"/>
                 </sfdc:update-single>
+
                 <choice doc:name="Was Order status updated?">
                     <when expression="#[payload.success]">
                         <set-property propertyName="http.status" value="#[200]" doc:name="Set http status"/>
