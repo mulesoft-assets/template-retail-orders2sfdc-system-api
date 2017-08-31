@@ -79,3 +79,13 @@ Follow other steps defined [here](#runonpremise) and once your app is all set an
 
 ## Deploying your Anypoint Template on CloudHub <a name="deployingyouranypointtemplateoncloudhub"/>
 Anypoint Studio provides you with really easy way to deploy your Template directly to CloudHub, for the specific steps to do so please check this [link](https://docs.mulesoft.com/mule-user-guide/v/3.8/deploying#DeployingMuleApplications-DeploytoCloudHub)
+
+## Properties to be configured (With examples) <a name="propertiestobeconfigured"/>
+In order to use this Mule Anypoint Template you need to configure properties (Credentials, configurations, etc.) either in properties file or in CloudHub as Environment Variables. Detail list with examples:
+
++ sfdc.username `jorge.drexler@mail.com`
++ sfdc.password `Noctiluca123`
++ sfdc.securityToken `avsfwCUl7apQs56Xq2AKi3X`
++ sfdc.url `https://login.salesforce.com/services/Soap/u/38.0`
++ sfdc.account.id `005n0000000T3QkAAK`
++ sfdc.contract.id `107j0674000T3MkNN`
