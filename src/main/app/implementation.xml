@@ -27,8 +27,8 @@ payload]]></dw:set-variable>
 %function toSalesforceString(arrayOfObjects) {
 	output: arrayOfObjects map ((value) -> (
       value mapObject { 
-          '$$': ('\"' ++ $$ ++ '\"') ++ ': \"' ++ $ ++ '\"'       
-      } pluck $ joinBy ',\n'
+          '$$': $$ ++ ': ' ++ $
+      } pluck $ joinBy '\n'
   )) joinBy '\n_________________________________________________\n\n'
 }
 ---
@@ -101,14 +101,32 @@ payload]]></dw:set-variable>
     </flow>
     <flow name="getOrders">
         <sfdc:query-all config-ref="Salesforce__Basic_Authentication" query="SELECT Id, SubtotalAmount__c,  TotalAmount__c, PickupDetails__c, ShipmentDetails__c, PartnersDetails__c, Status, CustomerId__c, BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry, ShippingStreet,ShippingCity, ShippingState, ShippingPostalCode, ShippingCountry FROM Order WHERE CustomerId__c = '#[flowVars.customerId]' AND IsDeleted = false ORDER BY CreatedDate DESC" doc:name="Get Orders"/>
-
-        <dw:transform-message doc:name="Map Salesforce Orders to Response">
-            <dw:input-payload />
+        <dw:transform-message doc:name="Transform Message">
+            <dw:input-payload mimeType="application/java" />
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
+---
+payload]]></dw:set-payload>
+        </dw:transform-message>
+
+        <dw:transform-message doc:name="Map Salesforce Orders to Response">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+
 %function toJsonFormat(orderItems) {
-	output: read(("[{" ++ (orderItems replace "_________________________________________________" with "},{") ++ "}]"), "application/json")	
+	output: read(deserializeProducts(orderItems).output, "application/json")
 }
+
+%function deserializeProducts(orderItems) {
+	output: '[' ++ using (products = (orderItems splitBy "\n_________________________________________________\n\n" ))
+	(products map deserializeProduct($).output joinBy ",\n") ++ ']'
+}
+
+%function deserializeProduct(product) {
+	output: "{" ++ using (lines = product splitBy '\n')
+	   ((lines map (line) -> (line splitBy ': ')) map (field) -> ('\"$(field[0])\": \"$(field[1])\"') joinBy ",\n") ++ "}"
+}
+
 ---
 payload map (order) -> {
 	orderId: order.Id,
@@ -149,8 +167,19 @@ payload map (order) -> {
                 <dw:transform-message doc:name="Map Salesforce Order to Response">
                     <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
+
 %function toJsonFormat(orderItems) {
-	output: read(("[{" ++ (orderItems replace "_________________________________________________" with "},{") ++ "}]"), "application/json")	
+	output: read(deserializeProducts(orderItems).output, "application/json")
+}
+
+%function deserializeProducts(orderItems) {
+	output: '[' ++ using (products = (orderItems splitBy "\n_________________________________________________\n\n" ))
+	(products map deserializeProduct($).output joinBy ",\n") ++ ']'
+}
+
+%function deserializeProduct(product) {
+	output: "{" ++ using (lines = product splitBy '\n')
+	   ((lines map (line) -> (line splitBy ': ')) map (field) -> ('\"$(field[0])\": \"$(field[1])\"') joinBy ",\n") ++ "}"
 }
 ---
 {
@@ -216,8 +245,8 @@ payload]]></dw:set-variable>
 %function toSalesforceString(arrayOfObjects) {
 	output: arrayOfObjects map ((value) -> (
       value mapObject { 
-          '$$': ('\"' ++ $$ ++ '\"') ++ ': \"' ++ $ ++ '\"'       
-      } pluck $ joinBy ',\n'
+          '$$': $$ ++ ': ' ++ $       
+      } pluck $ joinBy '\n'
   )) joinBy '\n_________________________________________________\n\n'
 }
 ---
