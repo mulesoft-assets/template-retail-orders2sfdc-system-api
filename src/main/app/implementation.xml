@@ -22,8 +22,6 @@ payload]]></dw:set-variable>
             <when expression="#[payload != empty]">
 
                 <dw:transform-message doc:name="Map Data to Salesforce Order" metadata:id="ea42dff6-d450-4136-b292-8abf3238f2f9">
-                    <dw:input-payload doc:sample="sample_data\json_3.json"/>
-                    <dw:input-variable doc:sample="sample_data\json_4.json" variableName="order"/>
                     <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
 %function toSalesforceString(arrayOfObjects) {
@@ -112,7 +110,6 @@ payload]]></dw:set-payload>
         </dw:transform-message>
 
         <dw:transform-message doc:name="Map Salesforce Orders to Response">
-            <dw:input-payload doc:sample="sample_data\json_2.json"/>
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/json
 
