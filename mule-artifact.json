@@ -1,0 +1,32 @@
+{
+  "configs": [
+    "implementation.xml",
+    "global.xml",
+    "retail-orders2sfdc-system-api.xml"
+  ],
+  "secureProperties": [],
+  "redeploymentEnabled": true,
+  "name": "template-retail-orders2sfdc-system-api",
+  "minMuleVersion": "4.1.1",
+  "requiredProduct": "MULE_EE",
+  "classLoaderModelLoaderDescriptor": {
+    "id": "mule",
+    "attributes": {
+      "exportedResources": [
+        "api\\.gitignore",
+        "api\\examples\\order_collection_get_response.raml",
+        "api\\examples\\order_get_response.raml",
+        "api\\examples\\order_post_request.raml",
+        "api\\examples\\order_put_request.raml",
+        "api\\examples\\order_status_put_request.raml",
+        "api\\exchange_modules\\47f07e0a-f578-47d4-9591-d9e7afffb0fc.retail\\retail_common\\1.0.5\\retail_common.raml",
+        "api\\exchange_modules\\47f07e0a-f578-47d4-9591-d9e7afffb0fc.retail\\retail_order_types\\1.0.9\\retail_order_types.raml",
+        "api\\retail-orders2sfdc-system-api.raml"
+      ]
+    }
+  },
+  "bundleDescriptorLoader": {
+    "id": "mule",
+    "attributes": {}
+  }
+}
