@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="createOrder" doc:id="af1aa28b-5eff-49f4-a092-944db9885d8e" >
+		<set-variable value="#[payload]" doc:name="Save input to variable order" doc:id="5e08e978-4992-4c0c-9981-22d26583420b" variableName="order" mimeType="application/json"/>
+		<salesforce:query-single doc:name="Get Contact" doc:id="d17f4c07-c720-43c3-ae8c-f83bf7166520" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query >SELECT CustomerId__c, MailingStreet, MailingCity, MailingPostalCode, MailingState, MailingCountry, OtherStreet, OtherCity, OtherPostalCode, OtherState, OtherCountry FROM Contact WHERE CustomerId__c = ':customerId'</salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output applicaton/java
+---
+{
+	"customerId" : attributes.uriParams.customerId
+}]]]></salesforce:parameters>
+		</salesforce:query-single>
+		<choice doc:name="Does Contact exist?" doc:id="14393236-904e-440c-9c8d-50c3baa2b5be" >
+			<when expression="#[sizeOf(payload) != 0]" >
+				<ee:transform doc:name="Map Data to Salesforce Order" doc:id="f0d47848-8726-461b-a281-349b7a461fcf" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+fun toSalesforceString(arrayOfObjects) = {result:  
+	arrayOfObjects map ((value) -> (
+      value mapObject { 
+          '$$': $$ ++ ': ' ++ $
+      } pluck $ joinBy '\n'
+  )) joinBy '\n_________________________________________________\n\n'
+}
+---
+{
+	ContractId: p("sfdc.contract.id"),
+	AccountId: p("sfdc.account.id"),
+	BillingStreet: payload.MailingStreet,
+	BillingCity: payload.MailingCity,
+	BillingState: payload.MailingState,
+	BillingPostalCode: payload.MailingPostalCode,
+	BillingCountry: payload.MailingCountry,
+	ShippingStreet: payload.OtherStreet,
+	ShippingCity: payload.OtherCity,
+	ShippingState: payload.OtherState,
+	ShippingPostalCode: payload.OtherPostalCode,
+	ShippingCountry: payload.OtherCountry,
+	SubTotalAmount__c: vars.order.subtotal,
+	ShippingCost__c: vars.order.shippingPrice,
+	TotalTax__c: vars.order.taxPrice,
+	TotalAmount__c: vars.order.total,
+	EffectiveDate: now(), 
+	Status: "Draft",
+	Description: "Anypoint Store Order:",
+	PickupDetails__c: toSalesforceString(vars.order.orderItems.pickupItems).result,
+	ShipmentDetails__c: toSalesforceString(vars.order.orderItems.shipmentItems).result,
+	PartnersDetails__c: toSalesforceString(vars.order.orderItems.partnersItems).result,
+	CustomerId__c: payload.CustomerId__c 
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce:create-single doc:name="Create Order" doc:id="7d635e9e-af61-42ae-b010-130c505a0ce9" config-ref="Salesforce_Config" type="Order"/>
+				<logger level="INFO" doc:name="Logger" doc:id="66b3360f-11d8-4e88-b3b0-190b0b2c50c0" message="#[output application/json --- payload]"/>
+				<choice doc:name="Was Order created ?" doc:id="28296377-2e2d-4af5-b95a-93bf5a912640" >
+					<when expression="#[payload.success]" >
+						<ee:transform doc:name="Successful Responce" doc:id="a3e25549-0039-4fa1-a27e-4f4837e828b2" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order was created",
+	orderId: payload.Id
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Error Response 400" doc:id="0e3a1f53-4aed-472c-922f-94d893e229b5" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order not created"
+}]]></ee:set-payload>
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+400]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Error Response 404" doc:id="2a3bc970-b666-4f03-8734-670dbe9b4f65" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "Customer not found"
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="getOrders" doc:id="96805c8e-1acb-49b2-9d8d-f9221725df21" >
+		<salesforce:query-all doc:name="Get Orders" doc:id="8fa4b79a-1d6a-4db9-a210-124dc8c1d70b" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query >SELECT Id, SubtotalAmount__c, TotalTax__c,  ShippingCost__c,  TotalAmount__c, PickupDetails__c, ShipmentDetails__c, PartnersDetails__c, Status, CustomerId__c, BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry, ShippingStreet,ShippingCity, ShippingState, ShippingPostalCode, ShippingCountry FROM Order WHERE CustomerId__c = ':customerId' AND IsDeleted = false ORDER BY CreatedDate DESC</salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output applicaton/java
+---
+{
+	"customerId" : attributes.uriParams.customerId
+}]]]></salesforce:parameters>
+		</salesforce:query-all>
+		<ee:transform doc:name="Map Salesforce Orders to Orders Response" doc:id="3a060df5-0b37-4915-823b-cca8b6824aab" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+fun toJsonFormat(orderItems) = {
+	result: read(deserializeProducts(orderItems).result, "application/json") map (item) ->{
+        orderItemId: item.orderItemId,
+        productId: item.productId,
+        productName: item.productName,
+        locationId: item.locationId,
+        deliveryMethod: item.deliveryMethod,
+        price: item.price,
+        quantity: item.quantity as Number
+    }
+}
+
+fun deserializeProducts(orderItems) = {
+	result: "[" ++ using (products = 
+    (orderItems splitBy ("\n_________________________________________________\n\n")))
+	(products map deserializeProduct($).result joinBy ",\n") ++ "]"
+}
+
+fun deserializeProduct(product) = {
+	result: "{" ++ using (lines = product splitBy '\n')
+	   ((lines map (line) -> (line splitBy ': ')) map (field) -> ("\"" ++ field[0] ++ "\":\"" ++ field[1] ++ "\"")) joinBy ",\n" ++ "}" 
+}
+---
+payload map (order) -> {
+	orderId: order.Id,
+	customerId: order.CustomerId__c,
+	shippingAddress: {
+		address: order.ShippingStreet,
+		city: order.ShippingCity,
+		state: order.ShippingState,
+		postalCode: order.ShippingPostalCode,
+		country: order.ShippingCountry 
+	},
+	billingAddress: {
+		address: order.BillingStreet,
+		city: order.BillingCity,
+		state: order.BillingState,
+		postalCode: order.BillingPostalCode,
+		country: order.BillingCountry 
+	},
+	subtotal: order.SubtotalAmount__c,
+	totalTax: order.TotalTax__c,
+	shippingCost: order.ShippingCost__c,
+	total: order.TotalAmount__c,
+	status: order.Status,
+	trackingNumber: order.Id, 
+	orderItems: {
+		(pickupItems: toJsonFormat(order.PickupDetails__c).result) if(order.PickupDetails__c != null),
+		(shipmentItems: toJsonFormat(order.ShipmentDetails__c).result) if(order.ShipmentDetails__c != null),
+		(partnersItems: toJsonFormat(order.PartnersDetails__c).result) if(order.PartnersDetails__c != null)	
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getOrder" doc:id="6cac8322-ce9a-429a-99eb-ce4c1e1ba80a" >
+		<salesforce:query-single doc:name="Get Order" doc:id="32446328-cb16-410a-b447-f26618339694" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query >SELECT Id, SubtotalAmount__c,  TotalTax__c,  ShippingCost__c,  TotalAmount__c, PickupDetails__c, ShipmentDetails__c, PartnersDetails__c, Status, CustomerId__c, BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry, ShippingStreet,ShippingCity, ShippingState, ShippingPostalCode, ShippingCountry 
+FROM Order WHERE Id   = ':orderId' </salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output applicaton/java
+---
+{
+	"orderId" : attributes.uriParams.orderId
+}]]]></salesforce:parameters>
+		</salesforce:query-single>
+		<choice doc:name="Does Order exist?" doc:id="2f92f1c5-dd2d-4a40-b165-53f1347866d5" >
+			<when expression="#[sizeOf(payload) != 0]" >
+				<ee:transform doc:name="Map Salesforce Order to Order Response" doc:id="224a6afc-4f02-4ecb-b9ae-bc5f8b2816f9" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+fun toJsonFormat(orderItems) = {
+	result: read(deserializeProducts(orderItems).result, "application/json") map (item) ->{
+        orderItemId: item.orderItemId,
+        productId: item.productId,
+        productName: item.productName,
+        locationId: item.locationId,
+        deliveryMethod: item.deliveryMethod,
+        price: item.price,
+        quantity: item.quantity as Number
+    }
+}
+
+fun deserializeProducts(orderItems) = {
+	result: "[" ++ using (products = 
+    (orderItems splitBy ("\n_________________________________________________\n\n")))
+	(products map deserializeProduct($).result joinBy ",\n") ++ "]"
+}
+
+fun deserializeProduct(product) = {
+	result: "{" ++ using (lines = product splitBy '\n')
+	   ((lines map (line) -> (line splitBy ': ')) map (field) -> ("\"" ++ field[0] ++ "\":\"" ++ field[1] ++ "\"")) joinBy ",\n" ++ "}" 
+}
+---
+{
+	orderId: payload.Id,
+	customerId: payload.CustomerId__c,
+	shippingAddress: {
+		address: payload.ShippingStreet,
+		city: payload.ShippingCity,
+		state: payload.ShippingState,
+		postalCode: payload.ShippingPostalCode,
+		country: payload.ShippingCountry 
+	},
+	billingAddress: {
+		address: payload.BillingStreet,
+		city: payload.BillingCity,
+		state: payload.BillingState,
+		postalCode: payload.BillingPostalCode,
+		country: payload.BillingCountry 
+	},
+	subtotal: payload.SubtotalAmount__c,
+	totalTax: payload.TotalTax__c,
+	shippingCost: payload.ShippingCost__c,
+	total: payload.TotalAmount__c,
+	status: payload.Status,
+	trackingNumber: payload.Id, 
+	orderItems: {
+		(pickupItems: toJsonFormat(payload.PickupDetails__c).result) if(payload.PickupDetails__c != null),
+		(shipmentItems: toJsonFormat(payload.ShipmentDetails__c).result) if(payload.ShipmentDetails__c != null),
+		(partnersItems: toJsonFormat(payload.PartnersDetails__c).result) if(payload.PartnersDetails__c != null)	
+	}
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Error Response 404" doc:id="717dcfad-a3be-4f10-a406-304f55f2a9db" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order not found"
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="deleteOrder" doc:id="d81dc0e6-318c-4de6-92b2-c295df2bb0f0" >
+		<salesforce:delete doc:name="Delete Order" doc:id="d90da4ab-df40-4b40-8f6f-63990bb4edc4" config-ref="Salesforce_Config">
+			<salesforce:delete-ids ><![CDATA[#[[attributes.uriParams.orderId]]]]></salesforce:delete-ids>
+		</salesforce:delete>
+		<choice doc:name="Was Order deleted ?" doc:id="3cdbfd96-966c-4955-a416-400e438c83ab" >
+			<when expression="#[payload[0].success]" >
+				<ee:transform doc:name="Successful Responce" doc:id="6d5321be-a3aa-4b4c-974e-cc932898cd25" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order was deleted"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Error Response 400" doc:id="d718be5b-e8ad-47d0-b63d-d2a61bab40fd" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order not deleted"
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+400]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="updateOrder" doc:id="88445036-ce92-4c91-980f-ecd91263ae83" >
+		<set-variable value="#[payload]" doc:name="Set Variable - order" doc:id="970a6c38-d41c-4dea-8a9b-b35432eb3375" variableName="order" mimeType="application/json"/>
+		<salesforce:query-single doc:name="Get Order" doc:id="2dd448e0-42c8-477f-90ef-1122189bac29" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query >SELECT Id FROM Order WHERE  Id= ':orderId'</salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output applicaton/java
+---
+{
+	"orderId" : attributes.uriParams.orderId
+}]]]></salesforce:parameters>
+		</salesforce:query-single>
+		<choice doc:name="Does Order exist?" doc:id="0e582cf3-dbc9-4f86-a419-4c8314fb9625" >
+			<when expression="#[sizeOf(payload) != 0]" >
+				<ee:transform doc:name="Map new data to Salesforce Order" doc:id="58a0e113-877a-4582-bb8b-34814a92e195" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+fun toSalesforceString(arrayOfObjects) = {result:  
+	arrayOfObjects map ((value) -> (
+      value mapObject { 
+          '$$': $$ ++ ': ' ++ $
+      } pluck $ joinBy '\n'
+  )) joinBy '\n_________________________________________________\n\n'
+}
+---
+{
+	Id: payload.Id,
+	SubTotalAmount__c: vars.order.subtotal,
+	ShippingCost__c: vars.order.shippingPrice,
+	TotalTax__c: vars.order.taxPrice,
+	TotalAmount__c: vars.order.total,
+	Status: vars.order.status,
+	BillingStreet: vars.order.billingAddress.address,
+	BillingCity: vars.order.billingAddress.city,
+	BillingState: vars.order.billingAddress.state,
+	BillingPostalCode: vars.order.billingAddress.postalCode,
+	BillingCountry: vars.order.billingAddress.Country,
+	ShippingStreet: vars.order.shippingAddress.address,
+	ShippingCity: vars.order.shippingAddress.city,
+	ShippingState: vars.order.shippingAddress.state,
+	ShippingPostalCode: vars.order.shippingAddress.postalCode,
+	ShippingCountry: vars.order.shippingAddress.country,
+	PickupDetails__c: toSalesforceString(vars.order.orderItems.pickupItems).result,
+	ShipmentDetails__c: toSalesforceString(vars.order.orderItems.shipmentItems).result,
+	PartnersDetails__c: toSalesforceString(vars.order.orderItems.partnersItems).result
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce:update-single doc:name="Update Order" doc:id="fbae8bd6-6e1d-4061-8d67-3bc948809b17" config-ref="Salesforce_Config" type="Order"/>
+				<choice doc:name="Choice" doc:id="0014faba-83a4-45b3-8b7b-debb6e6b30a2" >
+					<when expression="#[payload.success]" >
+						<ee:transform doc:name="Successful Responce" doc:id="9e9c3c40-6c9b-4ef0-86ee-72aa2ed4a4a8" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order was updated"
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Error Response 400" doc:id="07f986d2-54f5-43cf-b6fb-74a85fd21e54" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json 
+---
+{
+	message: "Order not updated"
+}]]></ee:set-payload>
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+400]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Error Response 404" doc:id="8c93a7d1-2c0d-472d-99e3-710a6a4f9272" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order not found"
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="updateOrderStatus" doc:id="b8bcc1b3-a3f7-4d17-9cc5-771e9c0e73e8" >
+		<set-variable value="#[payload.status]" doc:name="Set variable - orderStatus" doc:id="adcc95e4-d7a4-4299-b69b-e3a5a2983d2f" variableName="orderStatus" mimeType="application/json"/>
+		<salesforce:query-single doc:name="Get Order" doc:id="dc1e2f19-d21e-4b5d-9813-da3faa381fe6" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query >SELECT Id FROM Order WHERE Id = ':orderId'</salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output applicaton/java
+---
+{
+	"orderId" : attributes.uriParams.orderId
+}]]]></salesforce:parameters>
+		</salesforce:query-single>
+		<choice doc:name="Does Order exist?" doc:id="5e1e6a30-ceec-46ec-8944-35b1fbdddf0f" >
+			<when expression="#[sizeOf(payload) != 0]" >
+				<ee:transform doc:name="Map new status to Salesforce Order" doc:id="5b0ac444-0831-4806-9558-fbea1e8f8f3f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	Id: payload.Id,
+	Status: vars.orderStatus
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce:update-single doc:name="Update Order status" doc:id="85d1e31f-9ddd-41d6-91a8-e573abfc6d80" config-ref="Salesforce_Config" type="Order"/>
+				<choice doc:name="Was Order status updated?" doc:id="e22cacad-9828-46f7-b521-fe6210ed67a3" >
+					<when expression="#[payload.success]" >
+						<ee:transform doc:name="Successful Responce" doc:id="acd62734-ff67-4968-a396-662e0a93fa48" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order status was updated"
+}]]></ee:set-payload>
+							</ee:message>
+							<ee:variables >
+							</ee:variables>
+						</ee:transform>
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Error Response 400" doc:id="d0f500a0-7a97-48a1-8540-5f5ed2c095c3" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order status not updated"
+}]]></ee:set-payload>
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+400]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Error Response 404" doc:id="8a113751-b989-4b97-bcb3-396ce50b399c" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Order not found"
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+output application/java
+---
+404]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
