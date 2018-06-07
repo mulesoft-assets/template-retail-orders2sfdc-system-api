@@ -120,21 +120,21 @@ output application/json
         </error-handler>
     </flow>
     <flow name="put:\orders\(orderId):application\json:retail-orders2sfdc-system-api-config">
-		<flow-ref doc:name="updateOrder" doc:id="e4d0a428-504a-42c8-9e8c-33edd0464bcb" name="updateOrder"/>
+		<flow-ref doc:name="updateOrder" doc:id="44a4e6e1-d264-4f94-a98a-e949512cc2d4" name="updateOrder"/>
     </flow>
     <flow name="put:\orders\(orderId)\status:application\json:retail-orders2sfdc-system-api-config">
-		<flow-ref doc:name="updateOrderStatus" doc:id="ce525a72-1058-4a38-863d-c7f542de02a1" name="updateOrderStatus"/>
+		<flow-ref doc:name="updateOrderStatus" doc:id="16f8b748-b4f0-48cb-b97d-a6014a15bbbe" name="updateOrderStatus"/>
     </flow>
     <flow name="delete:\orders\(orderId):retail-orders2sfdc-system-api-config">
-		<flow-ref doc:name="deleteOrder" doc:id="2fff6ef9-92a6-4c56-9b38-cd15f9223803" name="deleteOrder"/>
+		<flow-ref doc:name="deleteOrder" doc:id="e942ab7e-3ae6-4368-b5c7-b60e89383298" name="deleteOrder"/>
     </flow>
     <flow name="get:\orders\(orderId):retail-orders2sfdc-system-api-config">
-		<flow-ref doc:name="getOrder" doc:id="ef8a7799-54d4-47f2-ae50-73538b159cbe" name="getOrder"/>
+		<flow-ref doc:name="getOrder" doc:id="088b8fe4-80e4-4565-be6a-23553bff22b9" name="getOrder"/>
     </flow>
     <flow name="get:\orders\customer\(customerId):retail-orders2sfdc-system-api-config">
-		<flow-ref doc:name="getOrders" doc:id="9e0f6d17-a487-4fa1-87d6-b7a90b237e31" name="getOrders"/>
+		<flow-ref doc:name="getOrders" doc:id="690a1482-bca6-4a2e-9a43-c18b02d2bd3b" name="getOrders"/>
     </flow>
     <flow name="post:\orders\customer\(customerId):application\json:retail-orders2sfdc-system-api-config">
-		<flow-ref doc:name="createOrder" doc:id="26737919-15d8-4677-8a9c-c98ef161aa8c" name="createOrder"/>
+		<flow-ref doc:name="createOrder" doc:id="f6c5bf32-086a-4795-b1ff-35c734476bbf" name="createOrder"/>
     </flow>
 </mule>

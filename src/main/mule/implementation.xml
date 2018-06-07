@@ -57,7 +57,6 @@ fun toSalesforceString(arrayOfObjects) = {result:
 					</ee:message>
 				</ee:transform>
 				<salesforce:create-single doc:name="Create Order" doc:id="7d635e9e-af61-42ae-b010-130c505a0ce9" config-ref="Salesforce_Config" type="Order"/>
-				<logger level="INFO" doc:name="Logger" doc:id="66b3360f-11d8-4e88-b3b0-190b0b2c50c0" message="#[output application/json --- payload]"/>
 				<choice doc:name="Was Order created ?" doc:id="28296377-2e2d-4af5-b95a-93bf5a912640" >
 					<when expression="#[payload.success]" >
 						<ee:transform doc:name="Successful Responce" doc:id="a3e25549-0039-4fa1-a27e-4f4837e828b2" >
@@ -318,11 +317,11 @@ output application/java
 	"orderId" : attributes.uriParams.orderId
 }]]]></salesforce:parameters>
 		</salesforce:query-single>
-		<choice doc:name="Does Order exist?" doc:id="0e582cf3-dbc9-4f86-a419-4c8314fb9625" >
-			<when expression="#[sizeOf(payload) != 0]" >
-				<ee:transform doc:name="Map new data to Salesforce Order" doc:id="58a0e113-877a-4582-bb8b-34814a92e195" >
-					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
+		<choice doc:name="Does Order exist?" doc:id="0e582cf3-dbc9-4f86-a419-4c8314fb9625">
+			<when expression="#[sizeOf(payload) != 0]">
+				<ee:transform doc:name="Map new data to Salesforce Order" doc:id="58a0e113-877a-4582-bb8b-34814a92e195">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
 output application/java
 fun toSalesforceString(arrayOfObjects) = {result:  
 	arrayOfObjects map ((value) -> (
@@ -349,18 +348,18 @@ fun toSalesforceString(arrayOfObjects) = {result:
 	ShippingState: vars.order.shippingAddress.state,
 	ShippingPostalCode: vars.order.shippingAddress.postalCode,
 	ShippingCountry: vars.order.shippingAddress.country,
-	PickupDetails__c: toSalesforceString(vars.order.orderItems.pickupItems).result,
-	ShipmentDetails__c: toSalesforceString(vars.order.orderItems.shipmentItems).result,
-	PartnersDetails__c: toSalesforceString(vars.order.orderItems.partnersItems).result
+	PickupDetails__c: if(sizeOf(vars.order.orderItems.pickupItems) != 0) toSalesforceString(vars.order.orderItems.pickupItems).result else " ",
+	ShipmentDetails__c: if(sizeOf(vars.order.orderItems.shipmentItems) != 0) toSalesforceString(vars.order.orderItems.shipmentItems).result else " ",
+	PartnersDetails__c: if(sizeOf(vars.order.orderItems.partnersItems) != 0) toSalesforceString(vars.order.orderItems.partnersItems).result else " "
 }]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
-				<salesforce:update-single doc:name="Update Order" doc:id="fbae8bd6-6e1d-4061-8d67-3bc948809b17" config-ref="Salesforce_Config" type="Order"/>
-				<choice doc:name="Choice" doc:id="0014faba-83a4-45b3-8b7b-debb6e6b30a2" >
-					<when expression="#[payload.success]" >
-						<ee:transform doc:name="Successful Responce" doc:id="9e9c3c40-6c9b-4ef0-86ee-72aa2ed4a4a8" >
-							<ee:message >
-								<ee:set-payload ><![CDATA[%dw 2.0
+				<salesforce:update-single doc:name="Update Order" doc:id="fbae8bd6-6e1d-4061-8d67-3bc948809b17" config-ref="Salesforce_Config" type="Order" />
+				<choice doc:name="Choice" doc:id="0014faba-83a4-45b3-8b7b-debb6e6b30a2">
+					<when expression="#[payload.success]">
+						<ee:transform doc:name="Successful Responce" doc:id="9e9c3c40-6c9b-4ef0-86ee-72aa2ed4a4a8">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
@@ -369,18 +368,18 @@ output application/json
 							</ee:message>
 						</ee:transform>
 					</when>
-					<otherwise >
-						<ee:transform doc:name="Error Response 400" doc:id="07f986d2-54f5-43cf-b6fb-74a85fd21e54" >
-							<ee:message >
-								<ee:set-payload ><![CDATA[%dw 2.0
+					<otherwise>
+						<ee:transform doc:name="Error Response 400" doc:id="07f986d2-54f5-43cf-b6fb-74a85fd21e54">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
 output application/json 
 ---
 {
 	message: "Order not updated"
 }]]></ee:set-payload>
 							</ee:message>
-							<ee:variables >
-								<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+							<ee:variables>
+								<ee:set-variable variableName="httpStatus"><![CDATA[%dw 2.0
 output application/java
 ---
 400]]></ee:set-variable>
@@ -389,18 +388,18 @@ output application/java
 					</otherwise>
 				</choice>
 			</when>
-			<otherwise >
-				<ee:transform doc:name="Error Response 404" doc:id="8c93a7d1-2c0d-472d-99e3-710a6a4f9272" >
-					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
+			<otherwise>
+				<ee:transform doc:name="Error Response 404" doc:id="8c93a7d1-2c0d-472d-99e3-710a6a4f9272">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
 {
 	message: "Order not found"
 }]]></ee:set-payload>
 					</ee:message>
-					<ee:variables >
-						<ee:set-variable variableName="httpStatus" ><![CDATA[%dw 2.0
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus"><![CDATA[%dw 2.0
 output application/java
 ---
 404]]></ee:set-variable>
