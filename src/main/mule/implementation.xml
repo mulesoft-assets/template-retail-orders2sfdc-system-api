@@ -46,7 +46,7 @@ fun toSalesforceString(arrayOfObjects) = {result:
 	ShippingCost__c: vars.order.shippingPrice,
 	TotalTax__c: vars.order.taxPrice,
 	TotalAmount__c: vars.order.total,
-	EffectiveDate: "2018-02-26T02:15:23Z", 
+	EffectiveDate: now(), 
 	Status: "Draft",
 	Description: "Anypoint Store Order:",
 	PickupDetails__c: toSalesforceString(vars.order.orderItems.pickupItems).result,
