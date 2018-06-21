@@ -2,7 +2,7 @@
   "configs": [
     "implementation.xml",
     "global.xml",
-    "retail-orders2sfdc-system-api.xml"
+    "system-api.xml"
   ],
   "secureProperties": [],
   "redeploymentEnabled": true,
