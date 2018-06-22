@@ -22,11 +22,22 @@ http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/
 						<ee:set-payload ><![CDATA[%dw 2.0
 output application/java
 fun toSalesforceString(arrayOfObjects) = {result:  
-	arrayOfObjects map ((value) -> (
+	toItemFormat(arrayOfObjects).result map ((value) -> (
       value mapObject { 
           '$$': $$ ++ ': ' ++ $
       } pluck $ joinBy '\n'
   )) joinBy '\n_________________________________________________\n\n'
+}
+fun toItemFormat(items) = { result:
+	items map (item) -> ({
+		orderItemId: item.orderItemId,
+        productId: item.productId,
+        productName: item.productName,
+        locationId: item.location.locationId,
+        deliveryMethod: item.location.deliveryMethod,
+        price: item.price,
+        quantity: item.quantity	
+	})
 }
 ---
 {
@@ -66,7 +77,7 @@ output application/json
 ---
 {
 	message: "Order was created",
-	orderId: payload.Id
+	identifier: payload.Id
 }]]></ee:set-payload>
 							</ee:message>
 						</ee:transform>
@@ -124,13 +135,16 @@ output application/java
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
-fun toJsonFormat(orderItems) = {
+fun toJsonFormat(orderItems, locationType) = {
 	result: read(deserializeProducts(orderItems).result, "application/json") map (item) ->{
         orderItemId: item.orderItemId,
         productId: item.productId,
         productName: item.productName,
-        locationId: item.locationId,
-        deliveryMethod: item.deliveryMethod,
+        location: {
+        	locationId: item.locationId,
+        	deliveryMethod: item.deliveryMethod,
+        	locationType: locationType
+        },
         price: item.price,
         quantity: item.quantity as Number
     }
@@ -148,7 +162,7 @@ fun deserializeProduct(product) = {
 }
 ---
 payload map (order) -> {
-	orderId: order.Id,
+	identifier: order.Id,
 	customerId: order.CustomerId__c,
 	shippingAddress: {
 		address: order.ShippingStreet,
@@ -171,9 +185,9 @@ payload map (order) -> {
 	status: order.Status,
 	trackingNumber: order.Id, 
 	orderItems: {
-		(pickupItems: toJsonFormat(order.PickupDetails__c).result) if(order.PickupDetails__c != null),
-		(shipmentItems: toJsonFormat(order.ShipmentDetails__c).result) if(order.ShipmentDetails__c != null),
-		(partnersItems: toJsonFormat(order.PartnersDetails__c).result) if(order.PartnersDetails__c != null)	
+		(pickupItems: toJsonFormat(order.PickupDetails__c, "STORE").result) if(order.PickupDetails__c != null),
+		(shipmentItems: toJsonFormat(order.ShipmentDetails__c, "WAREHOUSE").result) if(order.ShipmentDetails__c != null),
+		(partnersItems: toJsonFormat(order.PartnersDetails__c, "PARTNER").result) if(order.PartnersDetails__c != null)	
 	}
 }]]></ee:set-payload>
 			</ee:message>
@@ -195,13 +209,16 @@ FROM Order WHERE Id   = ':orderId' </salesforce:salesforce-query>
 					<ee:message >
 						<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
-fun toJsonFormat(orderItems) = {
+fun toJsonFormat(orderItems, locationType) = {
 	result: read(deserializeProducts(orderItems).result, "application/json") map (item) ->{
         orderItemId: item.orderItemId,
         productId: item.productId,
         productName: item.productName,
-        locationId: item.locationId,
-        deliveryMethod: item.deliveryMethod,
+        location: {
+        	locationId: item.locationId,
+        	deliveryMethod: item.deliveryMethod,
+        	locationType: locationType
+        },
         price: item.price,
         quantity: item.quantity as Number
     }
@@ -219,7 +236,7 @@ fun deserializeProduct(product) = {
 }
 ---
 {
-	orderId: payload.Id,
+	identifier: payload.Id,
 	customerId: payload.CustomerId__c,
 	shippingAddress: {
 		address: payload.ShippingStreet,
@@ -242,9 +259,9 @@ fun deserializeProduct(product) = {
 	status: payload.Status,
 	trackingNumber: payload.Id, 
 	orderItems: {
-		(pickupItems: toJsonFormat(payload.PickupDetails__c).result) if(payload.PickupDetails__c != null),
-		(shipmentItems: toJsonFormat(payload.ShipmentDetails__c).result) if(payload.ShipmentDetails__c != null),
-		(partnersItems: toJsonFormat(payload.PartnersDetails__c).result) if(payload.PartnersDetails__c != null)	
+		(pickupItems: toJsonFormat(payload.PickupDetails__c, "STORE").result) if(payload.PickupDetails__c != null),
+		(shipmentItems: toJsonFormat(payload.ShipmentDetails__c, "WAREHOUSE").result) if(payload.ShipmentDetails__c != null),
+		(partnersItems: toJsonFormat(payload.PartnersDetails__c, "PARTNER").result) if(payload.PartnersDetails__c != null)	
 	}
 }]]></ee:set-payload>
 					</ee:message>
@@ -324,11 +341,23 @@ output application/java
 						<ee:set-payload><![CDATA[%dw 2.0
 output application/java
 fun toSalesforceString(arrayOfObjects) = {result:  
-	arrayOfObjects map ((value) -> (
+	toItemFormat(arrayOfObjects).result map ((value) -> (
       value mapObject { 
           '$$': $$ ++ ': ' ++ $
       } pluck $ joinBy '\n'
   )) joinBy '\n_________________________________________________\n\n'
+}
+
+fun toItemFormat(items) = { result:
+	items map (item) -> ({
+		orderItemId: item.orderItemId,
+        productId: item.productId,
+        productName: item.productName,
+        locationId: item.location.locationId,
+        deliveryMethod: item.location.deliveryMethod,
+        price: item.price,
+        quantity: item.quantity	
+	})
 }
 ---
 {
