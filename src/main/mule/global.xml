@@ -14,7 +14,11 @@ http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mu
     </http:listener-config>
     <apikit:config name="retail-orders2sfdc-system-api-config" raml="retail-orders2sfdc-system-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
     <salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="b5e4114f-ef26-497c-b0da-f6b7a4712dc7" >
-		<salesforce:basic-connection username="${sfdc.username}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" />
+		<salesforce:basic-connection username="${sfdc.username}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" >
+			<reconnection >
+				<reconnect />
+			</reconnection>
+		</salesforce:basic-connection>
 	</salesforce:sfdc-config>
 	<configuration-properties doc:name="Configuration properties" doc:id="a311dc1a-9e9c-4141-a099-f3c24cc8aaf4" file="common.properties" />
 	<configuration-properties doc:name="Configuration properties" doc:id="7b69e4c7-1ad8-4c3e-9d02-dccb4ac47c09" file="mule.${mule.env}.properties" />
