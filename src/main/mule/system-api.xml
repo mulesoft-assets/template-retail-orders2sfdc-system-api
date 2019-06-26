@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd ">
-    <flow name="retail-orders2sfdc-system-api-main">
-        <http:listener config-ref="retail-orders2sfdc-system-api-httpListenerConfig" path="/api/*">
+    <flow name="retail-orders2sfdccommerce-system-api-main">
+        <http:listener config-ref="retail-orders2sfdccommerce-system-api-httpListenerConfig" path="/api/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:response>
@@ -10,7 +10,7 @@
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:error-response>
         </http:listener>
-        <apikit:router config-ref="retail-orders2sfdc-system-api-config" />
+        <apikit:router config-ref="retail-orders2sfdccommerce-system-api-config" />
         <error-handler>
             <on-error-propagate type="APIKIT:BAD_REQUEST">
                 <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
@@ -92,8 +92,8 @@ output application/json
             </on-error-propagate>
         </error-handler>
     </flow>
-    <flow name="retail-orders2sfdc-system-api-console">
-        <http:listener config-ref="retail-orders2sfdc-system-api-httpListenerConfig" path="/console/*">
+    <flow name="retail-orders2sfdccommerce-system-api-console">
+        <http:listener config-ref="retail-orders2sfdccommerce-system-api-httpListenerConfig" path="/console/*">
             <http:response statusCode="#[vars.httpStatus default 200]">
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:response>
@@ -102,7 +102,7 @@ output application/json
                 <http:headers>#[vars.outboundHeaders default {}]</http:headers>
             </http:error-response>
         </http:listener>
-        <apikit:console config-ref="retail-orders2sfdc-system-api-config" />
+        <apikit:console config-ref="retail-orders2sfdccommerce-system-api-config" />
         <error-handler>
             <on-error-propagate type="APIKIT:NOT_FOUND">
                 <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
@@ -119,22 +119,22 @@ output application/json
             </on-error-propagate>
         </error-handler>
     </flow>
-    <flow name="put:\orders\(orderId):application\json:retail-orders2sfdc-system-api-config">
+    <flow name="put:\orders\(orderId):application\json:retail-orders2sfdccommerce-system-api-config">
         <flow-ref doc:name="updateOrder" doc:id="44a4e6e1-d264-4f94-a98a-e949512cc2d4" name="updateOrder" />
     </flow>
-    <flow name="put:\orders\(orderId)\status:application\json:retail-orders2sfdc-system-api-config">
+    <flow name="put:\orders\(orderId)\status:application\json:retail-orders2sfdccommerce-system-api-config">
         <flow-ref doc:name="updateOrderStatus" doc:id="16f8b748-b4f0-48cb-b97d-a6014a15bbbe" name="updateOrderStatus" />
     </flow>
-    <flow name="delete:\orders\(orderId):retail-orders2sfdc-system-api-config">
+    <flow name="delete:\orders\(orderId):retail-orders2sfdccommerce-system-api-config">
         <flow-ref doc:name="deleteOrder" doc:id="e942ab7e-3ae6-4368-b5c7-b60e89383298" name="deleteOrder" />
     </flow>
-    <flow name="get:\orders\(orderId):retail-orders2sfdc-system-api-config">
+    <flow name="get:\orders\(orderId):retail-orders2sfdccommerce-system-api-config">
         <flow-ref doc:name="getOrder" doc:id="088b8fe4-80e4-4565-be6a-23553bff22b9" name="getOrder" />
     </flow>
-    <flow name="get:\orders\customer\(customerId):retail-orders2sfdc-system-api-config">
+    <flow name="get:\orders\customer\(customerId):retail-orders2sfdccommerce-system-api-config">
         <flow-ref doc:name="getOrders" doc:id="690a1482-bca6-4a2e-9a43-c18b02d2bd3b" name="getOrders" />
     </flow>
-    <flow name="post:\orders\customer\(customerId):application\json:retail-orders2sfdc-system-api-config">
+    <flow name="post:\orders\customer\(customerId):application\json:retail-orders2sfdccommerce-system-api-config">
         <flow-ref doc:name="createOrder" doc:id="f6c5bf32-086a-4795-b1ff-35c734476bbf" name="createOrder" />
     </flow>
 </mule>
