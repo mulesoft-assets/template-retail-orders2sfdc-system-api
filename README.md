@@ -1,4 +1,4 @@
-# Template Retail Salesforce Commerce Cloud Orders System API
+# Template Retail Salesforce Orders System API
 
 + [License Agreement](#licenseagreement)
 + [Use Case](#usecase)
@@ -18,19 +18,16 @@ Please review the terms of the license before downloading and using this templat
 
 # Use Case <a name="usecase"/>
 
-This API allows to create and update the order in Salesforce Commerce Cloud, obtain and delete them.
+Salesforce System Orders API allows to create and update the order in Salesforce, obtain and delete them.
 
 ### POST/orders/customer/{customerId} 
-Endpoint to create a new order for customer in Salesforce Commerce Cloud
+Endpoint to create new order for customer in Salesforce 
 
 ### GET/orders/customer/{customerId} 
-Endpoint to obtain orders based on Customer identifier.
+Endpoint to orders obtaining based on Customer identifier.
 
 ### GET|PUT|DELETE/orders/{id}
 Endpoints to obtaining, updating or deleting of order.
-
-### PUT/orders/{id}/status
-Endpoint to update order status.
 
 Look at the included self-descriptive RAML definition and the corresponding flows to learn more about the flows.
 
@@ -42,7 +39,7 @@ To make this Anypoint Template run, there are certain preconditions that must be
 This System API is meant to be deployed to CloudHub and managed using the API Platform Manager.
 
 # Run it! <a name="runit"/>
-Simple steps to get Retail Salesforce Commerce Cloud Orders System API running.
+Simple steps to get Retail Salesforce Orders System API running.
 See below.
 
 ## Running on premise <a name="runonopremise"/>
@@ -80,16 +77,10 @@ Follow other steps defined [here](#runonpremise) and once your app is all set an
 Anypoint Studio provides you with really easy way to deploy your Template directly to CloudHub, for the specific steps to do so please check this [link](https://docs.mulesoft.com/mule-user-guide/v/3.8/deploying#DeployingMuleApplications-DeploytoCloudHub)
 
 ## Properties to be configured (With examples) <a name="propertiestobeconfigured"/>
-In order to use this Mule Anypoint Template you need to configure properties (Credentials, configurations, etc.) either in properties file or in CloudHub as Environment Variables. 
+In order to use this Mule Anypoint Template you need to configure properties (Credentials, configurations, etc.) either in properties file or in CloudHub as Environment Variables. Detail list with examples:
 
-Detailed list with examples:
-### HTTP configuration
-+ http.port `8081`
-
-#Salesforce Commerce Cloud configuration
-+ ocapi.host `your.host.commercecloud.salesforce.com`
-+ ocapi.clientId `your_client_id`
-+ ocapi.clientSecret `your_client_secret`
-+ ocapi.tokenUrl `https://account.demandware.com/dwsso/oauth2/access_token`
-+ ocapi.basePathShopApi `/s/RefArch/dw/shop/v19_5`
-+ ocapi.basePathDataApi `/s/-/dw/data/v19_5`
++ sfdc.username `jorge.drexler@mail.com`
++ sfdc.password `Noctiluca123`
++ sfdc.securityToken `avsfwCUl7apQs56Xq2AKi3X`
++ sfdc.account.id `005n0000000T3QkAAK`
++ sfdc.contract.id `107j0674000T3MkNN`

@@ -8,10 +8,10 @@
     </parent>
     
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>template-retail-orders2sfdccommerce-system-api</artifactId>
-    <version>2.1.0-SNAPSHOT</version>
+    <artifactId>template-retail-orders2sfdc-system-api</artifactId>
+    <version>2.1.1-SNAPSHOT</version>
     <packaging>mule-application</packaging>
-    <name>template-retail-orders2sfdccommerce-system-api</name>
+    <name>template-retail-orders2sfdc-system-api</name>
     
     <build>
         <plugins>
@@ -21,7 +21,7 @@
                 <version>${mule.maven.plugin.version}</version>
                 <extensions>true</extensions>
                 <configuration>
-                    <classifier>mule-application</classifier>
+                    <classifier>mule-application-template</classifier>
                 </configuration>
             </plugin>
         </plugins>
@@ -39,15 +39,8 @@
             <classifier>mule-plugin</classifier>
         </dependency>
         <dependency>
-            <groupId>org.mule.modules</groupId>
-            <artifactId>mule-oauth-module</artifactId>
-            <version>${oauth.module.version}</version>
-            <classifier>mule-plugin</classifier>
-        </dependency>
-    	<dependency>
-            <groupId>org.mule.connectors</groupId>
-            <artifactId>mule-objectstore-connector</artifactId>
-            <version>1.1.3</version>
+            <groupId>com.mulesoft.connectors</groupId>
+            <artifactId>mule-salesforce-connector</artifactId>
             <classifier>mule-plugin</classifier>
         </dependency>
     </dependencies>

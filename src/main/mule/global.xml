@@ -1,63 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
-	xmlns:oauth="http://www.mulesoft.org/schema/mule/oauth"
 	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
 	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
 	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
-http://www.mulesoft.org/schema/mule/oauth http://www.mulesoft.org/schema/mule/oauth/current/mule-oauth.xsd">
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
 	
 	<global-property doc:name="Global Property" doc:id="36240748-d5fb-452a-8cb1-917489d90d00" name="mule.env" value="dev" />
-    <http:listener-config name="retail-orders2sfdccommerce-system-api-httpListenerConfig">
+    <http:listener-config name="retail-orders2sfdc-system-api-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="${http.port}" />
     </http:listener-config>
-    <apikit:config name="retail-orders2sfdccommerce-system-api-config" raml="retail-orders2sfdccommerce-system-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
-    
+    <apikit:config name="retail-orders2sfdc-system-api-config" raml="retail-orders2sfdc-system-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="b5e4114f-ef26-497c-b0da-f6b7a4712dc7" >
+		<salesforce:basic-connection username="${sfdc.username}" password="${sfdc.password}" securityToken="${sfdc.securityToken}" >
+			<reconnection >
+				<reconnect />
+			</reconnection>
+		</salesforce:basic-connection>
+	</salesforce:sfdc-config>
 	<configuration-properties doc:name="Configuration properties" doc:id="a311dc1a-9e9c-4141-a099-f3c24cc8aaf4" file="common.properties" />
 	<configuration-properties doc:name="Configuration properties" doc:id="7b69e4c7-1ad8-4c3e-9d02-dccb4ac47c09" file="mule.${mule.env}.properties" />
-	
-	<http:request-config name="HTTP_ShopApi_Orders_Request_configuration" doc:name="HTTP Request configuration" doc:id="f33af47f-f4b2-42e4-ac07-901083e70560"
-        basePath="${ocapi.basePathShopApi}">
-        <http:request-connection protocol="HTTPS" host="${ocapi.host}">
-        </http:request-connection>
-        <http:default-headers>
-        </http:default-headers>
-        <http:default-query-params>
-        </http:default-query-params>
-    </http:request-config>
-    
-    <http:request-config name="HTTP_ShopApi_Orders_TokenRequest_configuration" doc:name="HTTP Request configuration" doc:id="14a0b054-c711-45d3-9564-3e8893d57a52">
-        <http:request-connection protocol="HTTPS" host="${ocapi.host}">
-            <http:authentication>
-				<http:basic-authentication username="${ocapi.orders.access.username}" password="${ocapi.orders.access.password}" />
-            </http:authentication>
-        </http:request-connection>
-        <http:default-headers>
-        </http:default-headers>
-        <http:default-query-params>
-        </http:default-query-params>
-    </http:request-config>
-    
-     <http:request-config name="HTTP_DataApi_Request_configuration" doc:name="HTTP Request configuration" doc:id="7273312f-1af1-4bb7-a53a-269f17a0d621"
-        followRedirects="true" basePath="${ocapi.basePathDataApi}">
-        <http:request-connection protocol="HTTPS" host="${ocapi.host}">
-            <http:authentication>
-                <oauth:client-credentials-grant-type clientId="${ocapi.clientId}" clientSecret="${ocapi.clientSecret}" tokenUrl="${ocapi.tokenUrl}"
-                    responseRefreshToken="#[payload.access_token]">
-                    <oauth:custom-parameter-extractors>
-                        <oauth:parameter-extractor paramName="grant_type" value="client_credentials" />
-                    </oauth:custom-parameter-extractors>
-                </oauth:client-credentials-grant-type>
-            </http:authentication>
-        </http:request-connection>
-        <http:default-headers>
-        </http:default-headers>
-        <http:default-query-params>
-            <http:query-param key="client_id" value="${ocapi.clientId}" />
-        </http:default-query-params>
-    </http:request-config>
 </mule>
